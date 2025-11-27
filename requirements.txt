@@ -1,0 +1,8 @@
+Django==5.2.8
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+dj-database-url==3.0.1
+psycopg2-binary==2.9.11
+requests==2.32.5
+django-jazzmin @ https://github.com/farridav/django-jazzmin/archive/refs/heads/master.zip
+python-dotenv==1.0.1
