@@ -53,6 +53,19 @@ function App() {
   const [studentLoading, setStudentLoading] = useState(false);
   const [isTestStarted, setIsTestStarted] = useState(false);
 
+  const adminSummary = useMemo(() => {
+    const totalAttempts = attempts.length;
+    const totalQuestionsAnswered = attempts.reduce((total, attempt) => total + attempt.total_questions, 0);
+    const totalCorrectAnswers = attempts.reduce((total, attempt) => total + attempt.correct_answers, 0);
+    const accuracy = totalQuestionsAnswered ? Math.round((totalCorrectAnswers / totalQuestionsAnswered) * 100) : 0;
+    return {
+      questionCount: adminQuestions.length,
+      totalAttempts,
+      accuracy,
+      latestAttempt: attempts[0] ?? null,
+    };
+  }, [adminQuestions, attempts]);
+
   useEffect(() => {
     if (adminToken) {
       localStorage.setItem('testuz_token', adminToken);
@@ -326,145 +339,249 @@ function App() {
   );
 
   const renderAdminDashboard = () => (
-    <section className="admin-layout">
-      <header className="admin-header">
-        <div>
-          <h1>Admin boshqaruvi</h1>
-          <p>Savollarni yangilang, Telegram sozlamalari va natijalarni kuzating.</p>
-        </div>
-        <div className="header-actions">
-          <button className="ghost" onClick={loadAdminData} disabled={adminLoading}>
-            Yangilash
-          </button>
-          <button className="danger" onClick={handleLogout}>
-            Chiqish
-          </button>
-        </div>
-      </header>
-
-      <div className="dashboard-grid">
-        <form className="panel" onSubmit={handleQuestionSubmit}>
-          <h3>Yangi savol</h3>
-          <div className="field">
-            <label>Savol matni</label>
-            <textarea
-              value={questionForm.text}
-              onChange={(event) => setQuestionForm((prev) => ({ ...prev, text: event.target.value }))}
-              placeholder="Savolni kiriting"
-              required
-            />
+    <section className="admin-shell">
+      <aside className="admin-sidebar">
+        <div className="panel sidebar-card">
+          <p className="eyebrow">Admin rejimi</p>
+          <h2>Test boshqaruvi</h2>
+          <p className="muted">
+            Savollarni real vaqtda yangilang, Telegram xabarlari va oxirgi natijalarni tekshirib boring.
+          </p>
+          <div className="sidebar-actions">
+            <button className="ghost" onClick={loadAdminData} disabled={adminLoading}>
+              Yangilash
+            </button>
+            <button className="danger" onClick={handleLogout}>
+              Chiqish
+            </button>
           </div>
-          <div className="options">
-            {questionForm.options.map((option, index) => (
-              <div key={index} className="option-row">
-                <input
-                  type="text"
-                  value={option.text}
-                  onChange={(event) => handleOptionChange(index, 'text', event.target.value)}
-                  placeholder={`Variant ${index + 1}`}
-                  required
-                />
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={option.is_correct}
-                    onChange={(event) => handleOptionChange(index, 'is_correct', event.target.checked)}
-                  />
-                  To'g'ri
-                </label>
-                {questionForm.options.length > 2 && (
-                  <button type="button" className="ghost" onClick={() => removeOption(index)}>
-                    O'chirish
-                  </button>
-                )}
-              </div>
-            ))}
-            {questionForm.options.length < 5 && (
-              <button type="button" className="ghost" onClick={handleAddOption}>
-                Variant qo'shish
-              </button>
+        </div>
+
+        <div className="panel stats-panel">
+          <div className="stat-card">
+            <span className="eyebrow">Savollar</span>
+            <strong>{adminSummary.questionCount}</strong>
+            <p>Faol test banki</p>
+          </div>
+          <div className="stat-card">
+            <span className="eyebrow">Urinishlar</span>
+            <strong>{adminSummary.totalAttempts}</strong>
+            <p>Oxirgi 25 ta</p>
+          </div>
+          <div className="stat-card">
+            <span className="eyebrow">Aniqlik</span>
+            <strong>{adminSummary.accuracy}%</strong>
+            <p>O'rtacha muvaffaqiyat</p>
+          </div>
+          <div className="stat-card">
+            <span className="eyebrow">Telegram</span>
+            <span className={`status-pill ${notification.is_active ? 'success' : 'muted'}`}>
+              {notification.is_active ? 'Faol' : 'Faol emas'}
+            </span>
+            <p>{notification.admin_chat_id ? `Chat ID: ${notification.admin_chat_id}` : 'Chat ID kiritilmagan'}</p>
+          </div>
+        </div>
+
+        <div className="panel latest-panel">
+          <div className="panel-header">
+            <h4>So'nggi urinish</h4>
+            {adminSummary.latestAttempt && (
+              <span className="badge">
+                {adminSummary.latestAttempt.correct_answers}/{adminSummary.latestAttempt.total_questions}
+              </span>
             )}
           </div>
-          <button type="submit" className="primary" disabled={adminLoading}>
-            Saqlash
-          </button>
-        </form>
-
-        <form className="panel" onSubmit={handleNotificationSave}>
-          <h3>Telegram sozlamalari</h3>
-          <div className="field">
-            <label>Bot token</label>
-            <input
-              type="text"
-              value={notification.bot_token}
-              onChange={(event) => setNotification((prev) => ({ ...prev, bot_token: event.target.value }))}
-              placeholder="123456:ABCDEF"
-            />
-          </div>
-          <div className="field">
-            <label>Admin chat ID</label>
-            <input
-              type="text"
-              value={notification.admin_chat_id}
-              onChange={(event) => setNotification((prev) => ({ ...prev, admin_chat_id: event.target.value }))}
-              placeholder="123456789"
-            />
-          </div>
-          <label className="checkbox inline">
-            <input
-              type="checkbox"
-              checked={notification.is_active}
-              onChange={(event) => setNotification((prev) => ({ ...prev, is_active: event.target.checked }))}
-            />
-            Faollashtirish
-          </label>
-          <button type="submit" className="primary" disabled={adminLoading}>
-            Yangilash
-          </button>
-        </form>
-      </div>
-
-      <div className="panel">
-        <div className="panel-header">
-          <h3>Savollar ({adminQuestions.length})</h3>
-        </div>
-        <div className="question-list">
-          {adminQuestions.map((question) => (
-            <article key={question.id}>
-              <h4>{question.text}</h4>
-              <ul>
-                {question.options.map((option) => (
-                  <li key={option.id}>
-                    <span>{option.text}</span>
-                    {option.is_correct && <span className="badge success">To'g'ri</span>}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-          {!adminQuestions.length && <p>Hozircha savollar yo'q.</p>}
-        </div>
-      </div>
-
-      <div className="panel">
-        <div className="panel-header">
-          <h3>Oxirgi natijalar</h3>
-        </div>
-        <div className="attempt-list">
-          {attempts.map((attempt) => (
-            <div key={attempt.id} className="attempt-row">
+          {adminSummary.latestAttempt ? (
+            <div className="latest-grid">
               <div>
+                <p className="eyebrow">Ishtirokchi</p>
                 <strong>
-                  {attempt.first_name} {attempt.last_name}
+                  {adminSummary.latestAttempt.first_name} {adminSummary.latestAttempt.last_name}
                 </strong>
-                <p>{formatDate(attempt.created_at)}</p>
               </div>
-              <span className="badge">
-                {attempt.correct_answers}/{attempt.total_questions}
+              <div>
+                <p className="eyebrow">Sana</p>
+                <p>{formatDate(adminSummary.latestAttempt.created_at)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">Hozircha urinish mavjud emas.</p>
+          )}
+        </div>
+      </aside>
+
+      <div className="admin-main">
+        <div className="panel hero-panel">
+          <div>
+            <p className="eyebrow">Kontent boshqaruvi</p>
+            <h1>Yangi savolni soniyalar ichida yarating</h1>
+            <p className="muted">
+              Har bir savolga kamida ikki variant kiriting, to'g'ri javoblar belgilanadi va natijalar avtomatik
+              hisoblanadi.
+            </p>
+          </div>
+          <div className="hero-highlights">
+            <span className="badge soft">Avto Telegram xabari</span>
+            <span className="badge soft">Tokenli himoya</span>
+          </div>
+        </div>
+
+        <div className="panel-grid">
+          <form className="panel form-card" onSubmit={handleQuestionSubmit}>
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">Savol formasi</p>
+                <h3>Yangi savol</h3>
+              </div>
+              <span className="badge">{questionForm.options.length} variant</span>
+            </div>
+            <div className="field">
+              <label>Savol matni</label>
+              <textarea
+                value={questionForm.text}
+                onChange={(event) => setQuestionForm((prev) => ({ ...prev, text: event.target.value }))}
+                placeholder="Savolni kiriting"
+                required
+              />
+            </div>
+            <div className="options">
+              {questionForm.options.map((option, index) => (
+                <div key={index} className="option-row">
+                  <input
+                    type="text"
+                    value={option.text}
+                    onChange={(event) => handleOptionChange(index, 'text', event.target.value)}
+                    placeholder={`Variant ${index + 1}`}
+                    required
+                  />
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={option.is_correct}
+                      onChange={(event) => handleOptionChange(index, 'is_correct', event.target.checked)}
+                    />
+                    To'g'ri
+                  </label>
+                  {questionForm.options.length > 2 && (
+                    <button type="button" className="ghost" onClick={() => removeOption(index)}>
+                      O'chirish
+                    </button>
+                  )}
+                </div>
+              ))}
+              {questionForm.options.length < 5 && (
+                <button type="button" className="ghost" onClick={handleAddOption}>
+                  Variant qo'shish
+                </button>
+              )}
+            </div>
+            <button type="submit" className="primary" disabled={adminLoading}>
+              Saqlash
+            </button>
+          </form>
+
+          <form className="panel form-card secondary" onSubmit={handleNotificationSave}>
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">Telegram</p>
+                <h3>Notif so'zlamalari</h3>
+              </div>
+              <span className={`status-pill ${notification.is_active ? 'success' : 'muted'}`}>
+                {notification.is_active ? 'Faol' : 'Faol emas'}
               </span>
             </div>
-          ))}
-          {!attempts.length && <p>Hozircha natijalar mavjud emas.</p>}
+            <div className="field">
+              <label>Bot token</label>
+              <input
+                type="text"
+                value={notification.bot_token}
+                onChange={(event) => setNotification((prev) => ({ ...prev, bot_token: event.target.value }))}
+                placeholder="123456:ABCDEF"
+              />
+            </div>
+            <div className="field">
+              <label>Admin chat ID</label>
+              <input
+                type="text"
+                value={notification.admin_chat_id}
+                onChange={(event) => setNotification((prev) => ({ ...prev, admin_chat_id: event.target.value }))}
+                placeholder="123456789"
+              />
+            </div>
+            <label className="checkbox inline">
+              <input
+                type="checkbox"
+                checked={notification.is_active}
+                onChange={(event) => setNotification((prev) => ({ ...prev, is_active: event.target.checked }))}
+              />
+              Faollashtirish
+            </label>
+            <button type="submit" className="primary" disabled={adminLoading}>
+              Yangilash
+            </button>
+          </form>
+        </div>
+
+        <div className="panel question-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Savol banki</p>
+              <h3>Savollar</h3>
+            </div>
+            <span className="badge">{adminSummary.questionCount} ta</span>
+          </div>
+          <div className="question-board">
+            {adminQuestions.map((question, index) => (
+              <article key={question.id} className="question-row">
+                <div className="question-index">Q{index + 1}</div>
+                <div className="question-body">
+                  <h4>{question.text}</h4>
+                  <ul className="option-pills">
+                    {question.options.map((option) => (
+                      <li key={option.id} className={option.is_correct ? 'correct' : ''}>
+                        {option.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            ))}
+            {!adminQuestions.length && <p className="muted">Hozircha savollar yo'q.</p>}
+          </div>
+        </div>
+
+        <div className="panel attempt-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Yaqinda topshirganlar</p>
+              <h3>Oxirgi natijalar</h3>
+            </div>
+            <span className="badge">{adminSummary.totalAttempts} urinish</span>
+          </div>
+          <div className="attempt-table">
+            <div className="attempt-head">
+              <span>Ismi</span>
+              <span>Natija</span>
+              <span>Sana</span>
+            </div>
+            {attempts.map((attempt) => (
+              <div key={attempt.id} className="attempt-row">
+                <div>
+                  <strong>
+                    {attempt.first_name} {attempt.last_name}
+                  </strong>
+                </div>
+                <div className="attempt-score">
+                  <span>
+                    {attempt.correct_answers}/{attempt.total_questions}
+                  </span>
+                  <small>{Math.round((attempt.correct_answers / attempt.total_questions) * 100)}%</small>
+                </div>
+                <div className="attempt-date">{formatDate(attempt.created_at)}</div>
+              </div>
+            ))}
+            {!attempts.length && <p className="muted">Hozircha natijalar mavjud emas.</p>}
+          </div>
         </div>
       </div>
     </section>
